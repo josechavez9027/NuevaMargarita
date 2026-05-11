@@ -1,10 +1,9 @@
 <?php
 // Configuración de la base de datos
-$servername = "localhost";
-$username = "root";
-$password = "proot";
-$dbname = "eventospanaderia";
-
+$servername = getenv('DB_HOST') ?: 'localhost';
+$username   = getenv('DB_USER') ?: 'root';
+$password   = getenv('DB_PASS') ?: 'proot';
+$dbname     = getenv('DB_NAME') ?: 'eventospanaderia';
 // Crear conexión
 $conn = new mysqli($servername, $username, $password, $dbname);
 
