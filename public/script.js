@@ -1,6 +1,6 @@
 $(document).ready(function () {
-	// Variables globales
-	let productosPedido = [];
+	// Variables globales (expuestas en window para que el script inline del EJS las use)
+	window._productosPedido = [];
 
 	// Inicializar DataTables para todas las tablas
 	$("#tablaPedidos").DataTable({
@@ -30,55 +30,8 @@ $(document).ready(function () {
 	const hoy = new Date().toISOString().split("T")[0];
 	$("#fecha_entrega").attr("min", hoy);
 
-	// Agregar producto al pedido
-	$("#agregarProducto").click(function () {
-		const productoSelect = $("#productoSeleccionado");
-		const productoId = productoSelect.val();
-		const cantidad = parseInt($("#cantidadProducto").val());
-
-		if (!productoId) {
-			alert("Por favor selecciona un producto");
-			return;
-		}
-
-		if (isNaN(cantidad) || cantidad < 1) {
-			alert("Por favor ingresa una cantidad válida");
-			return;
-		}
-
-		const precio = parseFloat(
-			productoSelect.find("option:selected").data("precio")
-		);
-		const nombre = productoSelect.find("option:selected").data("nombre");
-		const subtotal = precio * cantidad;
-
-		// Verificar si el producto ya está en el pedido
-		const productoExistente = productosPedido.find(
-			(p) => p.id_producto == productoId
-		);
-
-		if (productoExistente) {
-			// Actualizar cantidad y subtotal
-			productoExistente.cantidad += cantidad;
-			productoExistente.subtotal = productoExistente.cantidad * precio;
-		} else {
-			// Agregar nuevo producto
-			productosPedido.push({
-				id_producto: productoId,
-				nombre: nombre,
-				cantidad: cantidad,
-				precio_unitario: precio,
-				subtotal: subtotal,
-			});
-		}
-
-		actualizarTablaProductosPedido();
-		calcularTotalPedido();
-
-		// Resetear selección
-		productoSelect.val("");
-		$("#cantidadProducto").val(1);
-	});
+	// NOTA: el listener de #agregarProducto está en el <script> inline del EJS
+	// porque jQuery se carga DESPUÉS de este archivo.
 
 	// Configurar modal de cambiar estado
 	$("#cambiarEstadoModal").on("show.bs.modal", function (event) {
@@ -90,20 +43,6 @@ $(document).ready(function () {
 		$("#estado").val(estadoActual);
 	});
 
-	$(document).on("click", ".btn-editar-cliente", function () {
-		// Extraer los datos directamente del botón
-		const clienteId = button.getAttribute("data-cliente-id");
-		const telefono = button.getAttribute("data-telefono");
-		const email = button.getAttribute("data-email");
-		const direccion = button.getAttribute("data-direccion");
-		console.log(telefono);
-
-		// Colocar los datos en el modal
-		$("#clienteIdEditar").val(clienteId);
-		$("#telefono_editar").val(telefono);
-		$("#correo_electronico_editar").val(email);
-		$("#direccion_editar").val(direccion);
-	});
 	// Configurar modal de editar producto
 	$("#editarProductoModal").on("show.bs.modal", function (event) {
 		const button = $(event.relatedTarget);
@@ -121,7 +60,7 @@ $(document).ready(function () {
 	// Configurar envío del formulario de pedido
 	$("#formPedido").on("submit", function () {
 		// Validar que haya al menos un producto en el pedido
-		if (productosPedido.length === 0) {
+		if (window._productosPedido.length === 0) {
 			alert("Debe agregar al menos un producto al pedido");
 			return false;
 		}
@@ -135,7 +74,7 @@ $(document).ready(function () {
 		}
 
 		// Agregar los productos al formulario antes de enviar
-		productosPedido.forEach((producto, index) => {
+		window._productosPedido.forEach((producto, index) => {
 			$(this).append(
 				$("<input>").attr({
 					type: "hidden",
@@ -175,16 +114,6 @@ $(document).ready(function () {
 		}
 	});
 
-	$("#nuevoPedidoModal").on("hidden.bs.modal", function () {
-		productosPedido = [];
-		actualizarTablaProductosPedido();
-		calcularTotalPedido();
-		$("#formPedido")[0].reset();
-
-		// Restablecer fecha mínima
-		const hoy = new Date().toISOString().split("T")[0];
-		$("#fecha_entrega").attr("min", hoy);
-	});
 });
 
 // Actualizar tabla de productos del pedido
@@ -192,7 +121,7 @@ function actualizarTablaProductosPedido() {
 	const tbody = $("#tablaProductosPedido tbody");
 	tbody.empty();
 
-	productosPedido.forEach((producto, index) => {
+	window._productosPedido.forEach((producto, index) => {
 		const fila = `
             <tr>
                 <td>${producto.nombre}</td>
@@ -225,9 +154,9 @@ function actualizarCantidadProducto(index, nuevaCantidad) {
 		return;
 	}
 
-	productosPedido[index].cantidad = cantidad;
-	productosPedido[index].subtotal =
-		cantidad * productosPedido[index].precio_unitario;
+	window._productosPedido[index].cantidad = cantidad;
+	window._productosPedido[index].subtotal =
+		cantidad * window._productosPedido[index].precio_unitario;
 
 	actualizarTablaProductosPedido();
 	calcularTotalPedido();
@@ -236,7 +165,7 @@ function actualizarCantidadProducto(index, nuevaCantidad) {
 // Eliminar producto del pedido
 function eliminarProductoPedido(index) {
 	if (confirm("¿Está seguro de que desea eliminar este producto del pedido?")) {
-		productosPedido.splice(index, 1);
+		window._productosPedido.splice(index, 1);
 		actualizarTablaProductosPedido();
 		calcularTotalPedido();
 	}

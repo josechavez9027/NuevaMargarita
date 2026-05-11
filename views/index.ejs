@@ -105,6 +105,8 @@
                       data-bs-toggle="modal" data-bs-target="#eliminarClienteModal"
                       data-cliente-id="<%= cliente.id_cliente %>"
                       data-nombre="<%= cliente.nombre %> <%= cliente.apellido_paterno %>">Eliminar</button>
+                    <button class="btn btn-sm btn-outline-info btn-action ms-1"
+                      onclick="verDetallesCliente(<%= cliente.id_cliente %>)">Ver Detalles</button>
                   </td>
                 </tr>
                 <% }) %>
@@ -146,6 +148,8 @@
                       data-bs-toggle="modal" data-bs-target="#eliminarProductoModal"
                       data-producto-id="<%= producto.id_producto %>"
                       data-nombre="<%= producto.nombre %>">Eliminar</button>
+                    <button class="btn btn-sm btn-outline-info btn-action ms-1"
+                      onclick="verDetallesProducto(<%= producto.id_producto %>)">Ver Detalles</button>
                   </td>
                 </tr>
                 <% }) %>
@@ -372,6 +376,34 @@
 </div>
 
 
+<!-- Modal: Ver Detalles de Producto -->
+<div class="modal fade" id="detallesProductoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header bg-primary text-white">
+      <h5 class="modal-title">Detalles del Producto</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body" id="detallesProductoContent">
+      <div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando...</p></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
+  </div></div>
+</div>
+
+<!-- Modal: Ver Detalles de Cliente -->
+<div class="modal fade" id="detallesClienteModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header bg-primary text-white">
+      <h5 class="modal-title">Detalles del Cliente</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body" id="detallesClienteContent">
+      <div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando...</p></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
+  </div></div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -380,7 +412,7 @@
 <script src="/script.js"></script>
 
 <script>
-// Modales con datos dinámicos
+// ── Listeners de modales (vanilla JS, no dependen de jQuery) ──────────────────
 document.querySelectorAll('.btn-editar-cliente').forEach(btn => {
   btn.addEventListener('click', function() {
     document.getElementById('clienteIdEditar').value = this.dataset.clienteId;
@@ -419,62 +451,203 @@ document.querySelectorAll('.btn-editar-pedido').forEach(btn => {
   });
 });
 
-// Redirigir llamadas ajax al nuevo endpoint
-if (typeof verDetalles !== 'undefined') {
-  // override url en script.js
-}
-// Parchar la URL del ajax (script.js usa la URL original)
-$(document).ready(function() {
-  // La función verDetalles en script.js usa ajax_obtener_detalles_pedido.php
-  // La sobreescribimos aquí para usar el endpoint de Node
+// ── Todo lo que usa jQuery va aquí, DESPUÉS de que jQuery ya cargó ────────────
+$(document).ready(function () {
+
+  // ── Corrección: "Agregar Producto" en Nuevo Pedido ──────────────
+  // (en script.js este listener no funcionaba porque jQuery
+  //  se carga DESPUÉS de /script.js en el HTML)
+  $('#agregarProducto').off('click').on('click', function () {
+    const productoSelect = $('#productoSeleccionado');
+    const productoId     = productoSelect.val();
+    const cantidad       = parseInt($('#cantidadProducto').val());
+
+    if (!productoId) { alert('Por favor selecciona un producto'); return; }
+    if (isNaN(cantidad) || cantidad < 1) { alert('Por favor ingresa una cantidad válida'); return; }
+
+    const precio   = parseFloat(productoSelect.find('option:selected').data('precio'));
+    const nombre   = productoSelect.find('option:selected').data('nombre');
+    const subtotal = precio * cantidad;
+
+    const existente = window._productosPedido.find(p => p.id_producto == productoId);
+    if (existente) {
+      existente.cantidad += cantidad;
+      existente.subtotal  = existente.cantidad * precio;
+    } else {
+      window._productosPedido.push({ id_producto: productoId, nombre, cantidad, precio_unitario: precio, subtotal });
+    }
+
+    actualizarTablaProductosPedido();
+    calcularTotalPedido();
+    productoSelect.val('');
+    $('#cantidadProducto').val(1);
+  });
+
+  // Reset al cerrar el modal de nuevo pedido
+  $('#nuevoPedidoModal').on('hidden.bs.modal', function () {
+    window._productosPedido = [];
+    actualizarTablaProductosPedido();
+    calcularTotalPedido();
+    $('#formPedido')[0].reset();
+    $('#fecha_entrega').attr('min', new Date().toISOString().split('T')[0]);
+  });
+
+  // ── Ver Detalles de PEDIDO ─────────────────────────────────────
   window.verDetalles = function(pedidoId) {
-    $('#detallesPedidoContent').html('<div class="text-center"><div class="spinner-border"></div><p class="mt-2">Cargando...</p></div>');
+    $('#detallesPedidoContent').html('<div class="text-center py-3"><div class="spinner-border"></div><p class="mt-2">Cargando...</p></div>');
     $('#detallesPedidoModal').modal('show');
     $.ajax({
-      url: '/ajax/detalles-pedido',
-      type: 'POST',
-      data: { id_pedido: pedidoId },
-      dataType: 'json',
-      success: function(response) {
-        if (response.success) {
-          const pedido = response.pedido;
-          const estados = {pendiente:'Pendiente',confirmado:'Confirmado',en_proceso:'En Proceso',listo:'Listo',entregado:'Entregado',cancelado:'Cancelado'};
-          let html = `
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <p><strong>ID:</strong> ${pedido.id_pedido}</p>
-                <p><strong>Cliente:</strong> ${pedido.nombre_cliente}</p>
-                <p><strong>Teléfono:</strong> ${pedido.telefono || 'N/A'}</p>
-              </div>
-              <div class="col-md-6">
-                <p><strong>Fecha Entrega:</strong> ${pedido.fecha_entrega}</p>
-                <p><strong>Hora:</strong> ${pedido.hora_entrega}</p>
-                <p><strong>Estado:</strong> <span class="status-badge status-${pedido.estado}">${estados[pedido.estado]||pedido.estado}</span></p>
-              </div>
+      url: '/ajax/detalles-pedido', type: 'POST',
+      data: { id_pedido: pedidoId }, dataType: 'json',
+      success: function(r) {
+        if (!r.success) { $('#detallesPedidoContent').html('<div class="alert alert-danger">Error al cargar el pedido.</div>'); return; }
+        const p = r.pedido;
+        const textos = {pendiente:'Pendiente',confirmado:'Confirmado',en_proceso:'En Proceso',listo:'Listo',entregado:'Entregado',cancelado:'Cancelado'};
+        let filas = (p.detalles||[]).map(d =>
+          `<tr><td>${d.nombre_producto}</td><td>${d.cantidad}</td>
+           <td>$${parseFloat(d.precio_unitario).toFixed(2)}</td>
+           <td>$${parseFloat(d.subtotal).toFixed(2)}</td></tr>`).join('');
+        $('#detallesPedidoContent').html(`
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <p><strong>ID:</strong> ${p.id_pedido}</p>
+              <p><strong>Cliente:</strong> ${p.nombre_cliente}</p>
+              <p><strong>Teléfono:</strong> ${p.telefono||'—'}</p>
+              <p><strong>Dirección:</strong> ${p.direccion||'—'}</p>
             </div>
-            <p><strong>Observaciones:</strong> ${pedido.observaciones || 'Ninguna'}</p>
-            <h5>Productos</h5>
+            <div class="col-md-6">
+              <p><strong>Fecha Entrega:</strong> ${p.fecha_entrega}</p>
+              <p><strong>Hora:</strong> ${p.hora_entrega}</p>
+              <p><strong>Estado:</strong> <span class="status-badge status-${p.estado}">${textos[p.estado]||p.estado}</span></p>
+              <p><strong>Observaciones:</strong> ${p.observaciones||'Ninguna'}</p>
+            </div>
+          </div>
+          <h6 class="mb-2">Productos del pedido</h6>
+          <div class="table-responsive">
             <table class="table table-sm table-striped">
-              <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
-              <tbody>`;
-          (pedido.detalles||[]).forEach(d => {
-            html += `<tr><td>${d.nombre_producto}</td><td>${d.cantidad}</td><td>$${parseFloat(d.precio_unitario).toFixed(2)}</td><td>$${parseFloat(d.subtotal).toFixed(2)}</td></tr>`;
-          });
-          html += `</tbody><tfoot>
-            <tr><td colspan="3" class="text-end"><strong>Subtotal:</strong></td><td>$${parseFloat(pedido.subtotal).toFixed(2)}</td></tr>
-            <tr><td colspan="3" class="text-end"><strong>Anticipo:</strong></td><td>$${parseFloat(pedido.anticipo).toFixed(2)}</td></tr>
-            <tr><td colspan="3" class="text-end"><strong>Saldo:</strong></td><td class="${pedido.saldo>0?'text-warning':'text-success'}">$${parseFloat(pedido.saldo).toFixed(2)}</td></tr>
-          </tfoot></table>`;
-          $('#detallesPedidoContent').html(html);
-        } else {
-          $('#detallesPedidoContent').html('<div class="alert alert-danger">Error al cargar el pedido.</div>');
-        }
+              <thead class="table-light"><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+              <tbody>${filas}</tbody>
+              <tfoot>
+                <tr><td colspan="3" class="text-end"><strong>Subtotal:</strong></td><td>$${parseFloat(p.subtotal).toFixed(2)}</td></tr>
+                <tr><td colspan="3" class="text-end"><strong>Anticipo:</strong></td><td>$${parseFloat(p.anticipo).toFixed(2)}</td></tr>
+                <tr><td colspan="3" class="text-end"><strong>Saldo:</strong></td>
+                    <td class="${p.saldo>0?'text-warning fw-bold':'text-success fw-bold'}">$${parseFloat(p.saldo).toFixed(2)}</td></tr>
+              </tfoot>
+            </table>
+          </div>`);
       },
-      error: function() {
-        $('#detallesPedidoContent').html('<div class="alert alert-danger">Error de conexión.</div>');
-      }
+      error: function() { $('#detallesPedidoContent').html('<div class="alert alert-danger">Error de conexión.</div>'); }
     });
   };
+
+  // ── Ver Detalles de PRODUCTO ───────────────────────────────────
+  window.verDetallesProducto = function(productoId) {
+    $('#detallesProductoContent').html('<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando...</p></div>');
+    $('#detallesProductoModal').modal('show');
+    $.ajax({
+      url: '/ajax/detalles-producto', type: 'POST',
+      data: { id_producto: productoId }, dataType: 'json',
+      success: function(r) {
+        if (!r.success) { $('#detallesProductoContent').html(`<div class="alert alert-danger">${r.message}</div>`); return; }
+        const p = r.producto, s = r.stats;
+        const colores = {pendiente:'secondary',confirmado:'primary',en_proceso:'warning',listo:'info',entregado:'success',cancelado:'danger'};
+        const dispBadge = p.disponible ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-danger">No</span>';
+        let filas = r.historial.length
+          ? r.historial.map(h => `
+              <tr>
+                <td>#${h.id_pedido}</td><td>${h.nombre_cliente}</td><td>${h.fecha_entrega}</td>
+                <td>${h.cantidad}</td><td>$${parseFloat(h.subtotal).toFixed(2)}</td>
+                <td><span class="badge bg-${colores[h.estado]||'secondary'}">${h.estado.replace('_',' ')}</span></td>
+              </tr>`).join('')
+          : '<tr><td colspan="6" class="text-center text-muted">Sin pedidos registrados</td></tr>';
+        $('#detallesProductoContent').html(`
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="card border-0 bg-light h-100"><div class="card-body">
+                <h6 class="text-muted mb-3">Información del Producto</h6>
+                <p class="mb-1"><strong>ID:</strong> ${p.id_producto}</p>
+                <p class="mb-1"><strong>Nombre:</strong> ${p.nombre}</p>
+                <p class="mb-1"><strong>Categoría:</strong> ${p.nombre_categoria||'—'}</p>
+                <p class="mb-1"><strong>Descripción:</strong> ${p.descripcion||'—'}</p>
+                <p class="mb-1"><strong>Precio unitario:</strong> $${parseFloat(p.precio_unitario).toFixed(2)}</p>
+                <p class="mb-0"><strong>Disponible:</strong> ${dispBadge}</p>
+              </div></div>
+            </div>
+            <div class="col-md-6">
+              <div class="card border-0 bg-light h-100"><div class="card-body">
+                <h6 class="text-muted mb-3">Estadísticas de Ventas</h6>
+                <p class="mb-1"><strong>Total de pedidos:</strong> ${s.total_pedidos}</p>
+                <p class="mb-1"><strong>Unidades vendidas:</strong> ${s.total_vendido}</p>
+                <p class="mb-0"><strong>Ingresos generados:</strong> $${parseFloat(s.ingresos_totales).toFixed(2)}</p>
+              </div></div>
+            </div>
+          </div>
+          <h6 class="mb-2">Últimos 10 pedidos con este producto</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped">
+              <thead class="table-light"><tr><th>Pedido</th><th>Cliente</th><th>Fecha Entrega</th><th>Cantidad</th><th>Subtotal</th><th>Estado</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>`);
+      },
+      error: function() { $('#detallesProductoContent').html('<div class="alert alert-danger">Error de conexión.</div>'); }
+    });
+  };
+
+  // ── Ver Detalles de CLIENTE ────────────────────────────────────
+  window.verDetallesCliente = function(clienteId) {
+    $('#detallesClienteContent').html('<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando...</p></div>');
+    $('#detallesClienteModal').modal('show');
+    $.ajax({
+      url: '/ajax/detalles-cliente', type: 'POST',
+      data: { id_cliente: clienteId }, dataType: 'json',
+      success: function(r) {
+        if (!r.success) { $('#detallesClienteContent').html(`<div class="alert alert-danger">${r.message}</div>`); return; }
+        const c = r.cliente, s = r.stats;
+        const colores = {pendiente:'secondary',confirmado:'primary',en_proceso:'warning',listo:'info',entregado:'success',cancelado:'danger'};
+        let filas = r.pedidos.length
+          ? r.pedidos.map(p => `
+              <tr>
+                <td>#${p.id_pedido}</td><td>${p.fecha_entrega}</td><td>${p.hora_entrega}</td>
+                <td>$${parseFloat(p.subtotal).toFixed(2)}</td>
+                <td>$${parseFloat(p.anticipo).toFixed(2)}</td>
+                <td class="${p.saldo>0?'text-warning fw-bold':''}">$${parseFloat(p.saldo).toFixed(2)}</td>
+                <td><span class="badge bg-${colores[p.estado]||'secondary'}">${p.estado.replace('_',' ')}</span></td>
+              </tr>`).join('')
+          : '<tr><td colspan="7" class="text-center text-muted">Sin pedidos registrados</td></tr>';
+        $('#detallesClienteContent').html(`
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="card border-0 bg-light h-100"><div class="card-body">
+                <h6 class="text-muted mb-3">Información Personal</h6>
+                <p class="mb-1"><strong>ID:</strong> ${c.id_cliente}</p>
+                <p class="mb-1"><strong>Nombre:</strong> ${c.nombre} ${c.apellido_paterno} ${c.apellido_materno||''}</p>
+                <p class="mb-1"><strong>Teléfono:</strong> ${c.telefono||'—'}</p>
+                <p class="mb-1"><strong>Correo:</strong> ${c.correo_electronico||'—'}</p>
+                <p class="mb-0"><strong>Dirección:</strong> ${c.direccion||'—'}</p>
+              </div></div>
+            </div>
+            <div class="col-md-6">
+              <div class="card border-0 bg-light h-100"><div class="card-body">
+                <h6 class="text-muted mb-3">Resumen de Compras</h6>
+                <p class="mb-1"><strong>Total de pedidos:</strong> ${s.total_pedidos}</p>
+                <p class="mb-1"><strong>Total gastado:</strong> $${parseFloat(s.total_gastado).toFixed(2)}</p>
+                <p class="mb-0"><strong>Saldo pendiente:</strong> $${parseFloat(s.saldo_pendiente).toFixed(2)}</p>
+              </div></div>
+            </div>
+          </div>
+          <h6 class="mb-2">Últimos 10 pedidos del cliente</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped">
+              <thead class="table-light"><tr><th>Pedido</th><th>Fecha Entrega</th><th>Hora</th><th>Total</th><th>Anticipo</th><th>Saldo</th><th>Estado</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>`);
+      },
+      error: function() { $('#detallesClienteContent').html('<div class="alert alert-danger">Error de conexión.</div>'); }
+    });
+  };
+
 });
 </script>
 </body>

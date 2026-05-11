@@ -283,7 +283,7 @@ app.post("/accion", async (req, res) => {
 	}
 });
 
-// ─── POST /ajax/detalles-pedido — Equivalente a ajax_obtener_detalles_pedido.php
+// ─── POST /ajax/detalles-pedido ───────────────────────────────────────────────
 app.post("/ajax/detalles-pedido", async (req, res) => {
 	const conn = await pool.getConnection();
 	try {
@@ -296,6 +296,98 @@ app.post("/ajax/detalles-pedido", async (req, res) => {
 		} else {
 			res.json({ success: false, message: "No se pudo encontrar el pedido" });
 		}
+	} catch (err) {
+		res.json({ success: false, message: err.message });
+	} finally {
+		conn.release();
+	}
+});
+
+// ─── POST /ajax/detalles-producto ────────────────────────────────────────────
+app.post("/ajax/detalles-producto", async (req, res) => {
+	const conn = await pool.getConnection();
+	try {
+		const id_producto = parseInt(req.body.id_producto);
+
+		const [[producto]] = await conn.query(
+			`SELECT p.*, c.nombre_categoria
+       FROM producto p
+       LEFT JOIN categoria c ON p.id_categoria = c.id_categoria
+       WHERE p.id_producto = ?`,
+			[id_producto],
+		);
+
+		if (!producto) {
+			return res.json({ success: false, message: "Producto no encontrado" });
+		}
+
+		const [historial] = await conn.query(
+			`SELECT dp.cantidad, dp.precio_unitario, dp.subtotal,
+              pe.id_pedido, pe.fecha_entrega, pe.estado,
+              CONCAT(cl.nombre, ' ', cl.apellido_paterno) AS nombre_cliente
+       FROM detalle_pedido dp
+       JOIN pedido pe  ON dp.id_pedido  = pe.id_pedido
+       JOIN cliente cl ON pe.id_cliente = cl.id_cliente
+       WHERE dp.id_producto = ?
+       ORDER BY pe.fecha_entrega DESC
+       LIMIT 10`,
+			[id_producto],
+		);
+
+		const [[stats]] = await conn.query(
+			`SELECT
+        COALESCE(SUM(dp.cantidad), 0) AS total_vendido,
+        COALESCE(SUM(dp.subtotal),  0) AS ingresos_totales,
+        COUNT(DISTINCT dp.id_pedido)   AS total_pedidos
+       FROM detalle_pedido dp
+       WHERE dp.id_producto = ?`,
+			[id_producto],
+		);
+
+		res.json({ success: true, producto, historial, stats });
+	} catch (err) {
+		res.json({ success: false, message: err.message });
+	} finally {
+		conn.release();
+	}
+});
+
+// ─── POST /ajax/detalles-cliente ─────────────────────────────────────────────
+app.post("/ajax/detalles-cliente", async (req, res) => {
+	const conn = await pool.getConnection();
+	try {
+		const id_cliente = parseInt(req.body.id_cliente);
+
+		const [[cliente]] = await conn.query(
+			"SELECT * FROM cliente WHERE id_cliente = ?",
+			[id_cliente],
+		);
+
+		if (!cliente) {
+			return res.json({ success: false, message: "Cliente no encontrado" });
+		}
+
+		const [pedidos] = await conn.query(
+			`SELECT id_pedido, fecha_entrega, hora_entrega,
+              estado, subtotal, anticipo, saldo, observaciones
+       FROM pedido
+       WHERE id_cliente = ?
+       ORDER BY fecha_entrega DESC
+       LIMIT 10`,
+			[id_cliente],
+		);
+
+		const [[stats]] = await conn.query(
+			`SELECT
+        COUNT(*)                   AS total_pedidos,
+        COALESCE(SUM(subtotal), 0) AS total_gastado,
+        COALESCE(SUM(saldo),    0) AS saldo_pendiente
+       FROM pedido
+       WHERE id_cliente = ?`,
+			[id_cliente],
+		);
+
+		res.json({ success: true, cliente, pedidos, stats });
 	} catch (err) {
 		res.json({ success: false, message: err.message });
 	} finally {
