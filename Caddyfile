@@ -1,9 +1,9 @@
 {
-    frankenphp
-    order php_server before file_server
+	frankenphp
+	order php_server before file_server
 }
 
 :8080 {
-    root * /app/public
-    php_server
+	root * /app/public
+	php_server
 }
