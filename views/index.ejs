@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panadería La Nueva Margarita</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="bg-gray-100">
+<div class="container-fluid">
+
+  <header class="text-white p-4 mb-4 shadow-md">
+    <div class="container">
+      <h1 class="text-3xl font-bold">Panadería "La Nueva Margarita"</h1>
+      <p class="text-lg">Sistema de Administración de Pedidos</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Navegación -->
+    <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pedidos" type="button">Pedidos</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#clientes" type="button">Clientes</button></li>
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#productos" type="button">Productos</button></li>
+    </ul>
+
+    <div class="tab-content">
+
+      <!-- ── PEDIDOS ─────────────────────────────────────────────────── -->
+      <div class="tab-pane fade" id="pedidos" role="tabpanel">
+        <div class="row mb-4">
+          <div class="col-md-6"><h2 class="text-xl font-bold mb-3">Lista de Pedidos</h2></div>
+          <div class="col-md-6 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoPedidoModal">Nuevo Pedido</button>
+          </div>
+        </div>
+        <div class="card shadow-sm"><div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="tablaPedidos">
+              <thead><tr>
+                <th>ID</th><th>Cliente</th><th>Fecha Entrega</th><th>Estado</th><th>Subtotal</th><th>Acciones</th>
+              </tr></thead>
+              <tbody>
+                <% pedidos.forEach(pedido => { %>
+                <tr>
+                  <td><%= pedido.id_pedido %></td>
+                  <td><%= pedido.nombre_cliente %></td>
+                  <td><%= pedido.fecha_entrega %></td>
+                  <td>
+                    <% const estadosTexto = {pendiente:'Pendiente',confirmado:'Confirmado',en_proceso:'En Proceso',listo:'Listo',entregado:'Entregado',cancelado:'Cancelado'}; %>
+                    <span class="status-badge status-<%= pedido.estado %>"><%= estadosTexto[pedido.estado] || pedido.estado %></span>
+                  </td>
+                  <td>$<%= parseFloat(pedido.subtotal).toFixed(2) %></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary me-1 btn-editar-pedido"
+                      data-bs-toggle="modal" data-bs-target="#editarPedidoModal"
+                      data-pedido-id="<%= pedido.id_pedido %>"
+                      data-fecha_entrega="<%= pedido.fecha_entrega %>"
+                      data-hora_entrega="<%= pedido.hora_entrega %>">Editar</button>
+                    <button class="btn btn-sm btn-outline-primary me-1"
+                      data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal"
+                      data-pedido-id="<%= pedido.id_pedido %>"
+                      data-estado-actual="<%= pedido.estado %>">Cambiar Estado</button>
+                    <button class="btn btn-sm btn-outline-info" onclick="verDetalles(<%= pedido.id_pedido %>)">Ver Detalles</button>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ── CLIENTES ────────────────────────────────────────────────── -->
+      <div class="tab-pane fade" id="clientes" role="tabpanel">
+        <div class="row mb-4">
+          <div class="col-md-6"><h2 class="text-xl font-bold mb-3">Lista de Clientes</h2></div>
+          <div class="col-md-6 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoClienteModal">Nuevo Cliente</button>
+          </div>
+        </div>
+        <div class="card shadow-sm"><div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="tablaClientes">
+              <thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Acciones</th></tr></thead>
+              <tbody>
+                <% clientes.forEach(cliente => { %>
+                <tr>
+                  <td><%= cliente.id_cliente %></td>
+                  <td><%= cliente.nombre %> <%= cliente.apellido_paterno %> <%= cliente.apellido_materno || '' %></td>
+                  <td><%= cliente.telefono || '' %></td>
+                  <td><%= cliente.correo_electronico || '' %></td>
+                  <td><%= cliente.direccion || '' %></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary btn-action me-1 btn-editar-cliente"
+                      data-bs-toggle="modal" data-bs-target="#editarClienteModal"
+                      data-cliente-id="<%= cliente.id_cliente %>"
+                      data-telefono="<%= cliente.telefono || '' %>"
+                      data-email="<%= cliente.correo_electronico || '' %>"
+                      data-direccion="<%= cliente.direccion || '' %>">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger btn-action"
+                      data-bs-toggle="modal" data-bs-target="#eliminarClienteModal"
+                      data-cliente-id="<%= cliente.id_cliente %>"
+                      data-nombre="<%= cliente.nombre %> <%= cliente.apellido_paterno %>">Eliminar</button>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ── PRODUCTOS ───────────────────────────────────────────────── -->
+      <div class="tab-pane fade show active" id="productos" role="tabpanel">
+        <div class="row mb-4">
+          <div class="col-md-6"><h2 class="text-xl font-bold mb-3">Lista de Productos</h2></div>
+          <div class="col-md-6 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">Nuevo Producto</button>
+          </div>
+        </div>
+        <div class="card shadow-sm"><div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="tablaProductos">
+              <thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Categoría</th><th>Precio</th><th>Disponible</th><th>Acciones</th></tr></thead>
+              <tbody>
+                <% productos.forEach(producto => { %>
+                <tr>
+                  <td><%= producto.id_producto %></td>
+                  <td><%= producto.nombre %></td>
+                  <td><%= producto.descripcion %></td>
+                  <td><%= producto.nombre_categoria %></td>
+                  <td>$<%= parseFloat(producto.precio_unitario).toFixed(2) %></td>
+                  <td><% if(producto.disponible) { %><span class="badge bg-success">Sí</span><% } else { %><span class="badge bg-danger">No</span><% } %></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary btn-action me-1"
+                      data-bs-toggle="modal" data-bs-target="#editarProductoModal"
+                      data-producto-id="<%= producto.id_producto %>"
+                      data-nombre="<%= producto.nombre %>"
+                      data-precio="<%= producto.precio_unitario %>"
+                      data-disponible="<%= producto.disponible %>">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger btn-action"
+                      data-bs-toggle="modal" data-bs-target="#eliminarProductoModal"
+                      data-producto-id="<%= producto.id_producto %>"
+                      data-nombre="<%= producto.nombre %>">Eliminar</button>
+                  </td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div></div>
+      </div>
+
+    </div><!-- /tab-content -->
+  </div><!-- /container -->
+</div><!-- /container-fluid -->
+
+
+<!-- ══════════════ MODALES ══════════════ -->
+
+<!-- Nuevo Cliente -->
+<div class="modal fade" id="nuevoClienteModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Agregar Nuevo Cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="guardar_cliente">
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control" name="nombre" required></div>
+        <div class="mb-3"><label class="form-label">Apellido Paterno *</label><input type="text" class="form-control" name="apellido_paterno" required></div>
+        <div class="mb-3"><label class="form-label">Apellido Materno</label><input type="text" class="form-control" name="apellido_materno"></div>
+        <div class="mb-3"><label class="form-label">Teléfono</label><input type="text" class="form-control" name="telefono"></div>
+        <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="correo_electronico"></div>
+        <div class="mb-3"><label class="form-label">Dirección</label><textarea class="form-control" name="direccion" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Editar Cliente -->
+<div class="modal fade" id="editarClienteModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Editar Cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="actualizar_cliente">
+      <input type="hidden" name="id_cliente" id="clienteIdEditar">
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="telefono_editar" name="telefono"></div>
+        <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="correo_electronico_editar" name="correo_electronico"></div>
+        <div class="mb-3"><label class="form-label">Dirección</label><textarea class="form-control" id="direccion_editar" name="direccion" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Eliminar Cliente -->
+<div class="modal fade" id="eliminarClienteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm"><div class="modal-content">
+    <div class="modal-header bg-danger text-white"><h5 class="modal-title">Eliminar Cliente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="eliminar_cliente">
+      <input type="hidden" name="id_cliente" id="eliminarClienteId">
+      <div class="modal-body"><p>¿Eliminar a <strong id="eliminarClienteNombre"></strong>?</p><p class="text-muted small">Solo si no tiene pedidos registrados.</p></div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Eliminar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Nuevo Producto -->
+<div class="modal fade" id="nuevoProductoModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Agregar Nuevo Producto</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="guardar_producto">
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Nombre *</label><input type="text" class="form-control" name="nombre" required></div>
+        <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" name="descripcion" rows="2"></textarea></div>
+        <div class="mb-3"><label class="form-label">Categoría *</label>
+          <select class="form-select" name="id_categoria" required>
+            <option value="">Seleccionar...</option>
+            <% categorias.forEach(cat => { %><option value="<%= cat.id_categoria %>"><%= cat.nombre_categoria %></option><% }) %>
+          </select>
+        </div>
+        <div class="mb-3"><label class="form-label">Precio Unitario *</label><input type="number" class="form-control" name="precio_unitario" min="0" step="0.01" required></div>
+        <div class="mb-3"><label class="form-label">Disponible</label>
+          <select class="form-select" name="disponible"><option value="1">Sí</option><option value="0">No</option></select>
+        </div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Editar Producto -->
+<div class="modal fade" id="editarProductoModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Editar Producto</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="actualizar_producto">
+      <input type="hidden" name="id_producto" id="productoIdEditar">
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Producto</label><input type="text" class="form-control" id="nombreProductoEditar" readonly></div>
+        <div class="mb-3"><label class="form-label">Precio Unitario *</label><input type="number" class="form-control" id="precio_unitario_editar" name="precio_unitario" min="0" step="0.01" required></div>
+        <div class="mb-3"><label class="form-label">Disponible</label>
+          <select class="form-select" id="disponible_editar" name="disponible"><option value="1">Sí</option><option value="0">No</option></select>
+        </div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Eliminar Producto -->
+<div class="modal fade" id="eliminarProductoModal" tabindex="-1">
+  <div class="modal-dialog modal-sm"><div class="modal-content">
+    <div class="modal-header bg-danger text-white"><h5 class="modal-title">Eliminar Producto</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="eliminar_producto">
+      <input type="hidden" name="id_producto" id="eliminarProductoId">
+      <div class="modal-body"><p>¿Eliminar <strong id="eliminarProductoNombre"></strong>?</p><p class="text-muted small">Solo si no está en pedidos.</p></div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Eliminar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Nuevo Pedido -->
+<div class="modal fade" id="nuevoPedidoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Crear Nuevo Pedido</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion" id="formPedido">
+      <input type="hidden" name="action" value="guardar_pedido">
+      <input type="hidden" name="subtotal" id="subtotalPedido" value="0">
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-6"><label class="form-label">Cliente *</label>
+            <select class="form-select" name="id_cliente" required>
+              <option value="">Seleccionar cliente</option>
+              <% clientes.forEach(c => { %><option value="<%= c.id_cliente %>"><%= c.nombre %> <%= c.apellido_paterno %></option><% }) %>
+            </select>
+          </div>
+          <div class="col-md-6"><label class="form-label">Fecha de Entrega *</label>
+            <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega" required>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-6"><label class="form-label">Hora de Entrega *</label><input type="time" class="form-control" name="hora_entrega" required></div>
+          <div class="col-md-6"><label class="form-label">Anticipo</label><input type="number" class="form-control" id="anticipo" name="anticipo" min="0" step="0.01" value="0"></div>
+        </div>
+        <h5 class="mt-4 mb-3">Productos del Pedido</h5>
+        <div class="row mb-3">
+          <div class="col-md-5">
+            <select class="form-select" id="productoSeleccionado">
+              <option value="">Seleccionar producto</option>
+              <% productos.forEach(p => { if(p.disponible) { %>
+              <option value="<%= p.id_producto %>" data-precio="<%= p.precio_unitario %>" data-nombre="<%= p.nombre %>">
+                <%= p.nombre %> - $<%= parseFloat(p.precio_unitario).toFixed(2) %>
+              </option>
+              <% } }) %>
+            </select>
+          </div>
+          <div class="col-md-3"><input type="number" class="form-control" id="cantidadProducto" min="1" value="1"></div>
+          <div class="col-md-4"><button type="button" class="btn btn-outline-primary w-100" id="agregarProducto">Agregar Producto</button></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm" id="tablaProductosPedido">
+            <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio Unitario</th><th>Subtotal</th><th>Acción</th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td colspan="3" class="text-end"><strong>Total:</strong></td><td id="totalPedido">$0.00</td><td></td></tr></tfoot>
+          </table>
+        </div>
+        <div class="mb-3"><label class="form-label">Observaciones</label><textarea class="form-control" name="observaciones" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar Pedido</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Cambiar Estado -->
+<div class="modal fade" id="cambiarEstadoModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Cambiar Estado del Pedido</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="cambiar_estado">
+      <input type="hidden" name="id_pedido" id="pedidoIdEstado">
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Estado</label>
+          <select class="form-select" id="estado" name="estado">
+            <option value="pendiente">Pendiente</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="en_proceso">En Proceso</option>
+            <option value="listo">Listo</option>
+            <option value="entregado">Entregado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Editar Pedido -->
+<div class="modal fade" id="editarPedidoModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Editar Pedido</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="POST" action="/accion">
+      <input type="hidden" name="action" value="editar_pedido">
+      <input type="hidden" name="id_pedido" id="editarPedidoId">
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Fecha de Entrega</label><input type="date" class="form-control" id="editarFechaEntrega" name="fecha_entrega"></div>
+        <div class="mb-3"><label class="form-label">Hora de Entrega</label><input type="time" class="form-control" id="editarHoraEntrega" name="hora_entrega"></div>
+        <div class="mb-3"><label class="form-label">Anticipo</label><input type="number" class="form-control" name="anticipo" min="0" step="0.01" value="0"></div>
+        <div class="mb-3"><label class="form-label">Observaciones</label><textarea class="form-control" name="observaciones" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Detalles Pedido -->
+<div class="modal fade" id="detallesPedidoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Detalles del Pedido</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body" id="detallesPedidoContent"></div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button></div>
+  </div></div>
+</div>
+
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="/script.js"></script>
+
+<script>
+// Modales con datos dinámicos
+document.querySelectorAll('.btn-editar-cliente').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('clienteIdEditar').value = this.dataset.clienteId;
+    document.getElementById('telefono_editar').value = this.dataset.telefono;
+    document.getElementById('correo_electronico_editar').value = this.dataset.email;
+    document.getElementById('direccion_editar').value = this.dataset.direccion;
+  });
+});
+
+document.querySelectorAll('[data-bs-target="#eliminarClienteModal"]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('eliminarClienteId').value = this.dataset.clienteId;
+    document.getElementById('eliminarClienteNombre').textContent = this.dataset.nombre;
+  });
+});
+
+document.querySelectorAll('[data-bs-target="#eliminarProductoModal"]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('eliminarProductoId').value = this.dataset.productoId;
+    document.getElementById('eliminarProductoNombre').textContent = this.dataset.nombre;
+  });
+});
+
+document.querySelectorAll('[data-bs-target="#cambiarEstadoModal"]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('pedidoIdEstado').value = this.dataset.pedidoId;
+    document.getElementById('estado').value = this.dataset.estadoActual;
+  });
+});
+
+document.querySelectorAll('.btn-editar-pedido').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('editarPedidoId').value = this.dataset.pedidoId;
+    document.getElementById('editarFechaEntrega').value = this.dataset.fecha_entrega;
+    document.getElementById('editarHoraEntrega').value = this.dataset.hora_entrega;
+  });
+});
+
+// Redirigir llamadas ajax al nuevo endpoint
+if (typeof verDetalles !== 'undefined') {
+  // override url en script.js
+}
+// Parchar la URL del ajax (script.js usa la URL original)
+$(document).ready(function() {
+  // La función verDetalles en script.js usa ajax_obtener_detalles_pedido.php
+  // La sobreescribimos aquí para usar el endpoint de Node
+  window.verDetalles = function(pedidoId) {
+    $('#detallesPedidoContent').html('<div class="text-center"><div class="spinner-border"></div><p class="mt-2">Cargando...</p></div>');
+    $('#detallesPedidoModal').modal('show');
+    $.ajax({
+      url: '/ajax/detalles-pedido',
+      type: 'POST',
+      data: { id_pedido: pedidoId },
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          const pedido = response.pedido;
+          const estados = {pendiente:'Pendiente',confirmado:'Confirmado',en_proceso:'En Proceso',listo:'Listo',entregado:'Entregado',cancelado:'Cancelado'};
+          let html = `
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p><strong>ID:</strong> ${pedido.id_pedido}</p>
+                <p><strong>Cliente:</strong> ${pedido.nombre_cliente}</p>
+                <p><strong>Teléfono:</strong> ${pedido.telefono || 'N/A'}</p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Fecha Entrega:</strong> ${pedido.fecha_entrega}</p>
+                <p><strong>Hora:</strong> ${pedido.hora_entrega}</p>
+                <p><strong>Estado:</strong> <span class="status-badge status-${pedido.estado}">${estados[pedido.estado]||pedido.estado}</span></p>
+              </div>
+            </div>
+            <p><strong>Observaciones:</strong> ${pedido.observaciones || 'Ninguna'}</p>
+            <h5>Productos</h5>
+            <table class="table table-sm table-striped">
+              <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+              <tbody>`;
+          (pedido.detalles||[]).forEach(d => {
+            html += `<tr><td>${d.nombre_producto}</td><td>${d.cantidad}</td><td>$${parseFloat(d.precio_unitario).toFixed(2)}</td><td>$${parseFloat(d.subtotal).toFixed(2)}</td></tr>`;
+          });
+          html += `</tbody><tfoot>
+            <tr><td colspan="3" class="text-end"><strong>Subtotal:</strong></td><td>$${parseFloat(pedido.subtotal).toFixed(2)}</td></tr>
+            <tr><td colspan="3" class="text-end"><strong>Anticipo:</strong></td><td>$${parseFloat(pedido.anticipo).toFixed(2)}</td></tr>
+            <tr><td colspan="3" class="text-end"><strong>Saldo:</strong></td><td class="${pedido.saldo>0?'text-warning':'text-success'}">$${parseFloat(pedido.saldo).toFixed(2)}</td></tr>
+          </tfoot></table>`;
+          $('#detallesPedidoContent').html(html);
+        } else {
+          $('#detallesPedidoContent').html('<div class="alert alert-danger">Error al cargar el pedido.</div>');
+        }
+      },
+      error: function() {
+        $('#detallesPedidoContent').html('<div class="alert alert-danger">Error de conexión.</div>');
+      }
+    });
+  };
+});
+</script>
+</body>
+</html>

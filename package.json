@@ -1,0 +1,14 @@
+{
+  "name": "nueva-margarita",
+  "version": "1.0.0",
+  "description": "Panadería La Nueva Margarita - Sistema de Pedidos",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0",
+    "ejs": "^3.1.9"
+  }
+}
