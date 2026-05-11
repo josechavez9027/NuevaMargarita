@@ -1,5 +1,3 @@
-Copiar
-
 FROM php:8.2-apache
  
 # Instalar extensión mysqli (necesaria para el proyecto)
