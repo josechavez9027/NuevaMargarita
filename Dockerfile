@@ -1,32 +1,21 @@
-FROM php:8.2-apache
+FROM php:8.1-apache
  
-# Corregir error "AH00534: More than one MPM loaded"
-# Deshabilitar mpm_event/worker y dejar solo mpm_prefork (compatible con mysqli)
-RUN a2dismod mpm_event mpm_worker 2>/dev/null || true && \
-    a2enmod mpm_prefork
+# Deshabilitar mpm_event, activar mpm_prefork (evita "More than one MPM loaded")
+RUN a2dismod mpm_event 2>/dev/null; \
+    a2enmod mpm_prefork; \
+    a2enmod rewrite
  
-# Instalar extensión mysqli
-RUN docker-php-ext-install mysqli pdo pdo_mysql && \
-    docker-php-ext-enable mysqli
+# Instalar mysqli
+RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
  
-# Habilitar mod_rewrite
-RUN a2enmod rewrite
- 
-# Copiar archivos del proyecto
+# Copiar proyecto
 COPY . /var/www/html/
  
-# Limpiar archivos de config del directorio web (no deben ser accesibles)
-RUN rm -f /var/www/html/start.sh /var/www/html/railway.toml
+# Limpiar archivos de config del webroot
+RUN rm -f /var/www/html/Dockerfile /var/www/html/railway.toml /var/www/html/start.sh
  
 # Permisos
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+RUN chown -R www-data:www-data /var/www/html
  
-# Script de inicio para ajustar el puerto dinámico de Railway ($PORT)
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
- 
-EXPOSE 80
- 
-CMD ["/start.sh"]
- 
+# Configurar Apache para usar $PORT de Railway
+CMD bash -c "sed -i \"s/80/\${PORT:-80}/g\" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf && apache2-foreground"
