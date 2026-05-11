@@ -1,13 +1,12 @@
 <?php
 // Configuración de la base de datos
-$host = "hopper.proxy.rlwy.net"; // El host del TCP Proxy
-$port = "25286";                 // El puerto del TCP Proxy
-$user = "root";
-$pass = "pBAFmMJnJFbLMrdjkcirrtTrtREYYYaJ";
-$db   = "railway";
+$servername = getenv('DB_HOST') ?: 'localhost';
+$username   = getenv('DB_USER') ?: 'root';
+$password   = getenv('DB_PASS') ?: 'proot';
+$dbname     = getenv('DB_NAME') ?: 'railway';
+$port       = getenv('DB_PORT') ?: '3306';
 // Crear conexión
-$conn = new mysqli($servername, $username, $password, $dbname);
-
+$conn = new mysqli($servername, $username, $password, $dbname, $port);
 // Verificar conexión
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
