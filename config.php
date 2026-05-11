@@ -1,9 +1,10 @@
 <?php
 // Configuración de la base de datos
-$servername = getenv('DB_HOST') ?: 'localhost';
-$username   = getenv('DB_USER') ?: 'root';
-$password   = getenv('DB_PASS') ?: 'proot';
-$dbname     = getenv('DB_NAME') ?: 'eventospanaderia';
+$host = "hopper.proxy.rlwy.net"; // El host del TCP Proxy
+$port = "25286";                 // El puerto del TCP Proxy
+$user = "root";
+$pass = "pBAFmMJnJFbLMrdjkcirrtTrtREYYYaJ";
+$db   = "railway";
 // Crear conexión
 $conn = new mysqli($servername, $username, $password, $dbname);
 
